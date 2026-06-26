@@ -215,3 +215,72 @@ func TestGetImagesFromHTMLRelative(t *testing.T) {
 		})
 	}
 }
+
+func TestExtractPageData(t *testing.T) {
+
+	tests := []struct {
+		name      string
+		inputURL  string
+		inputBody string
+		expected  PageData
+	}{
+		{
+			name:     "valid HTML",
+			inputURL: "https://crawler-test.com",
+			inputBody: `<html><body>
+						<h1>Test Title</h1>
+						<p>This is the first paragraph.</p>
+						<a href="/link1">Link 1</a>
+						<img src="/image1.jpg" alt="Image 1">
+					</body></html>`,
+			expected: PageData{
+				URL:            "https://crawler-test.com",
+				Heading:        "Test Title",
+				FirstParagraph: "This is the first paragraph.",
+				OutgoingLinks:  []string{"https://crawler-test.com/link1"},
+				ImageURLs:      []string{"https://crawler-test.com/image1.jpg"},
+			},
+		},
+		{
+			name:     "two paragraphs, multiple links and images",
+			inputURL: "https://crawler-test.com",
+			inputBody: `<html><body>
+						<h1>Test Title</h1>
+						<p>This is the first paragraph.</p>
+						<p>This is the second paragraph.</p>
+						<a href="/link1">Link 1</a>
+						<a href="/link2">Link 2</a>
+						<img src="/image1.jpg" alt="Image 1">
+						<img src="/image2.jpg" alt="Image 2">
+					</body></html>`,
+			expected: PageData{
+				URL:            "https://crawler-test.com",
+				Heading:        "Test Title",
+				FirstParagraph: "This is the first paragraph.",
+				OutgoingLinks:  []string{"https://crawler-test.com/link1", "https://crawler-test.com/link2"},
+				ImageURLs:      []string{"https://crawler-test.com/image1.jpg", "https://crawler-test.com/image2.jpg"},
+			},
+		},
+		{
+			name:      "empty html and url",
+			inputURL:  "",
+			inputBody: "",
+			expected:  PageData{},
+		},
+		{
+			name:      "empty html",
+			inputURL:  "https://crawler-test.com",
+			inputBody: "",
+			expected:  PageData{URL: "https://crawler-test.com"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			actual := extractPageData(tc.inputBody, tc.inputURL)
+			if !reflect.DeepEqual(actual, tc.expected) {
+				t.Errorf("expected %v, got %v", tc.expected, actual)
+			}
+		})
+	}
+}
