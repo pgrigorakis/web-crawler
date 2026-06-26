@@ -18,6 +18,14 @@ func main() {
 	}
 
 	baseURL := args[0]
+	fmt.Printf("starting crawl of: %s...\n", baseURL)
 
-	fmt.Printf("starting crawl of: %s\n", baseURL)
+	pages := make(map[string]int)
+
+	crawlPage(baseURL, baseURL, pages)
+
+	for url, count := range pages {
+		fmt.Printf("URL: %v, Seen: %v times\n", url, count)
+	}
+
 }
