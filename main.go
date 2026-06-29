@@ -2,30 +2,60 @@ package main
 
 import (
 	"fmt"
+	"net/url"
 	"os"
+	"strconv"
+	"sync"
 )
 
 func main() {
+
 	args := os.Args[1:]
-	if len(args) < 1 {
-		fmt.Println("no website provided")
+	if len(args) < 3 {
+		fmt.Println("usage: crawler BASE_URL MAX_CONCURRENCY MAX_PAGES")
 		os.Exit(1)
 	}
 
-	if len(args) > 1 {
+	if len(args) > 3 {
 		fmt.Println("too many arguments provided")
 		os.Exit(1)
 	}
 
-	baseURL := args[0]
-	fmt.Printf("starting crawl of: %s...\n", baseURL)
-
-	pages := make(map[string]int)
-
-	crawlPage(baseURL, baseURL, pages)
-
-	for url, count := range pages {
-		fmt.Printf("URL: %v, Seen: %v times\n", url, count)
+	userURL := args[0]
+	maxConcurrency, err := strconv.Atoi(args[1])
+	if err != nil {
+		fmt.Printf("MAX_CONCURRENCY argument was not an integer, please provide an integer")
+		os.Exit(1)
+	}
+	maxPages, err := strconv.Atoi(args[2])
+	if err != nil {
+		fmt.Printf("MAX_PAGES argument was not an integer, please provide an integer")
+		os.Exit(1)
 	}
 
+	fmt.Printf("URL: %v\nMAX_PAGES: %d\nMAX_CONCURRENCY: %d\n", userURL, maxPages, maxConcurrency)
+
+	fmt.Printf("starting crawl of: %s...\n", userURL)
+	baseURL, err := url.Parse(userURL)
+	if err != nil {
+		fmt.Printf("could not parse url %v: %v\n", userURL, err)
+		os.Exit(1)
+	}
+
+	cfg := config{
+		pages:              map[string]PageData{},
+		baseURL:            baseURL,
+		mu:                 &sync.Mutex{},
+		concurrencyControl: make(chan struct{}, maxConcurrency),
+		maxPages:           maxPages,
+		wg:                 &sync.WaitGroup{},
+	}
+
+	cfg.wg.Add(1)
+	go cfg.crawlPage(userURL)
+	cfg.wg.Wait()
+
+	for url, _ := range cfg.pages {
+		fmt.Printf("URL: %v\n", url)
+	}
 }
