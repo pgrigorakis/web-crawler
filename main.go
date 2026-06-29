@@ -58,4 +58,9 @@ func main() {
 	for url, _ := range cfg.pages {
 		fmt.Printf("URL: %v\n", url)
 	}
+
+	err = writeJSONReport(cfg.pages, "report.json")
+	if err != nil {
+		fmt.Printf("could not create JSON report: %v", err)
+	}
 }
