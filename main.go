@@ -55,7 +55,7 @@ func main() {
 	go cfg.crawlPage(userURL)
 	cfg.wg.Wait()
 
-	for url, _ := range cfg.pages {
+	for url := range cfg.pages {
 		fmt.Printf("URL: %v\n", url)
 	}
 
