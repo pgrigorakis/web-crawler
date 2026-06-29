@@ -2,55 +2,47 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 )
 
-type PageData struct {
-	URL            string
-	Heading        string
-	FirstParagraph string
-	OutgoingLinks  []string
-	ImageURLs      []string
-}
+func getHTML(rawURL string) (string, error) {
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
 
-func extractPageData(hmtl, pageURL string) PageData {
-	heading := getHeadingFromHTML(hmtl)
-	firstParagraph := getFirstParagraphFromHTML(hmtl)
-
-	parsedURL, err := url.Parse(pageURL)
+	req, err := http.NewRequest("GET", rawURL, nil)
 	if err != nil {
-		fmt.Printf("could not parse page url %v: %v\n", pageURL, err)
-		return PageData{
-			URL:            pageURL,
-			Heading:        heading,
-			FirstParagraph: firstParagraph,
-			OutgoingLinks:  nil,
-			ImageURLs:      nil,
-		}
+		return "", fmt.Errorf("error creating request: %v", err)
 	}
 
-	links, err := getURLsFromHTML(hmtl, parsedURL)
-	if err != nil {
-		fmt.Printf("could not get urls from html: %v\n", err)
-		return PageData{}
-	}
-	images, err := getImagesFromHTML(hmtl, parsedURL)
-	if err != nil {
-		fmt.Printf("could not get images from html: %v\n", err)
-		return PageData{}
+	req.Header.Set("User-Agent", "BootCrawler/1.0")
+	res, err := client.Do(req)
+	if res.StatusCode > 399 {
+		return "", fmt.Errorf("%v error: %v", res.StatusCode, err)
 	}
 
-	return PageData{
-		URL:            pageURL,
-		Heading:        heading,
-		FirstParagraph: firstParagraph,
-		OutgoingLinks:  links,
-		ImageURLs:      images,
+	if !strings.Contains(res.Header.Get("Content-Type"), "text/html") {
+		return "", fmt.Errorf("content type not text/html: %v, actually %v", err, res.Header.Get("Content-Type"))
 	}
+	if err != nil {
+		return "", fmt.Errorf("error getting response: %v", err)
+	}
+
+	defer res.Body.Close()
+
+	htmlBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		return "", fmt.Errorf("error reading request body: %v", err)
+	}
+
+	return string(htmlBody), nil
 }
 
 func getHeadingFromHTML(html string) string {
